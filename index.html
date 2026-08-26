@@ -237,7 +237,28 @@
     let isRaceStarted = false;
     const maxTrackStrokes = 100;
 
-    document.addEventListener("DOMContentLoaded", renderHistory);
+    let wakeLock = null;
+
+    async function requestWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                wakeLock = await navigator.wakeLock.request('screen');
+            }
+        } catch (err) {
+            console.log(`Error Wake Lock: ${err.message}`);
+        }
+    }
+
+    document.addEventListener('visibilitychange', async () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') {
+            await requestWakeLock();
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+        renderHistory();
+        requestWakeLock();
+    });
 
     function setDifficulty(spm, btn, name) {
         targetSPM = spm;
