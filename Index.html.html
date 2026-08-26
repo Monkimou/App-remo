@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yosuda Rower Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: white; margin: 0; padding: 15px; text-align: center; }
+        .card { background: #1e293b; border-radius: 16px; padding: 15px 20px 20px 20px; max-width: 450px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        
+        .track-container { 
+            background-color: #0284c7;
+            background-image: url('Fondo.png'), url('Fondo.PNG'); 
+            background-size: 100% 100%; 
+            background-repeat: no-repeat;
+            background-position: center; 
+            border-radius: 12px; 
+            height: 230px; 
+            margin-bottom: 15px; 
+            border: 2px solid #334155; 
+            position: relative; 
+            overflow: hidden; 
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .lane { position: absolute; width: 100%; height: 80px; display: flex; align-items: center; }
+        .ghost-lane { top: 73px; }
+        .user-lane { top: 150px; }
+
+        .boat-img { 
+            position: absolute; 
+            left: -35px; 
+            height: 85px; 
+            width: 140px; 
+            object-fit: contain;
+            transition: left 0.5s ease-out; 
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5)); 
+        }
+        .ghost-img { opacity: 0.9; }
+
+        .lane-badge { 
+            position: absolute; 
+            right: 8px; 
+            top: 30px; 
+            font-size: 0.65rem; 
+            color: #ffffff; 
+            background: rgba(15, 23, 42, 0.85); 
+            padding: 3px 7px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            z-index: 2; 
+        }
+
+        .countdown-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            border-radius: 10px;
+        }
+        .countdown-text {
+            font-size: 3.5rem;
+            font-weight: 900;
+            color: #38bdf8;
+            text-shadow: 0 0 20px rgba(56, 189, 248, 0.8);
+            animation: pulse 0.8s infinite alternate;
+        }
+
+        .diff-container { margin: 12px 0; }
+        .diff-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: bold; display: block; margin-bottom: 6px; }
+        .diff-buttons { display: flex; gap: 6px; justify-content: center; }
+        .btn-diff { 
+            flex: 1; padding: 8px 4px; font-size: 0.75rem; font-weight: bold; 
+            background: #0f172a; color: #94a3b8; border: 1px solid #334155; 
+            border-radius: 8px; cursor: pointer; transition: 0.2s; margin: 0; 
+        }
+        .btn-diff.active { background: #0284c7; color: white; border-color: #38bdf8; }
+
+        .metrics-wrapper { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+        .metric { background: #0f172a; border-radius: 12px; padding: 8px; border: 1px solid #334155; }
+        
+        .metric-main { padding: 6px 12px; }
+        .metric-main .value { font-size: 2.2rem; line-height: 1.1; margin-top: 0; }
+        
+        .metrics-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .metrics-row .value { font-size: 1.3rem; }
+        .metrics-row .label { font-size: 0.62rem; }
+        .metrics-row .unit { font-size: 0.62rem; }
+
+        .label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: bold; }
+        .value { font-weight: 800; color: #38bdf8; margin-top: 2px; }
+        .unit { font-size: 0.7rem; color: #94a3b8; }
+        
+        button { margin-top: 10px; width: 100%; padding: 12px; font-size: 0.9rem; font-weight: bold; background: #0284c7; color: white; border: none; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+        button:active { transform: scale(0.98); background: #0369a1; }
+        .btn-save { background: #10b981; }
+        .btn-save:active { background: #059669; }
+        #status { font-size: 0.85rem; color: #f59e0b; margin-top: 10px; font-weight: 600; }
+
+        /* Tarjeta de Registros con Usuario */
+        .history-section { margin-top: 20px; border-top: 1px solid #334155; padding-top: 12px; text-align: left; }
+        .history-title { font-size: 0.85rem; color: #94a3b8; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        
+        .history-card { 
+            background: #0f172a; 
+            border: 1px solid #334155; 
+            border-radius: 10px; 
+            padding: 10px 14px; 
+            margin-bottom: 8px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 3px; 
+        }
+
+        .history-top { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+
+        .history-stats-col { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 3px; 
+            font-size: 0.85rem; 
+            font-weight: bold; 
+        }
+        .stat-line { display: flex; gap: 8px; align-items: center; }
+        .stat-label-white { color: #ffffff; }
+        .stat-label-orange { color: #f97316; }
+        .stat-label-red { color: #f43f5e; }
+        .stat-val-white { color: #ffffff; }
+        .stat-val-orange { color: #f97316; }
+        .stat-val-red { color: #f43f5e; }
+
+        .history-user-center {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #38bdf8;
+            text-align: center;
+            flex: 1;
+            padding: 0 5px;
+        }
+
+        .history-right-col { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            gap: 2px; 
+        }
+        .history-date { font-size: 0.72rem; color: #94a3b8; font-weight: bold; }
+        .time-box { text-align: right; margin-top: 2px; }
+        .time-label-red { font-size: 0.75rem; color: #ef4444; font-weight: bold; text-transform: uppercase; display: block; line-height: 1; }
+        .time-val-red { font-size: 1.5rem; color: #ef4444; font-weight: 900; line-height: 1.1; }
+
+        .history-bottom { 
+            font-size: 0.76rem; 
+            font-weight: bold; 
+            color: #34d399; 
+            margin-top: 0px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="track-container">
+        <div id="countdownOverlay" class="countdown-overlay" style="display: none;">
+            <div id="countdownText" class="countdown-text">5</div>
+        </div>
+
+        <div class="lane ghost-lane">
+            <img id="ghostBoat" class="boat-img ghost-img" src="barco_fantasma.PNG" onerror="this.src='barco_fantasma.png'" alt="Bot">
+            <span id="ghostBadge" class="lane-badge">Bot</span>
+        </div>
+        <div class="lane user-lane">
+            <img id="userBoat" class="boat-img" src="barco_usuario.PNG" onerror="this.src='barco_usuario.png'" alt="Tú">
+            <span class="lane-badge">Tú</span>
+        </div>
+    </div>
+
+    <div class="diff-container">
+        <span class="diff-label">Dificultad Fantasma</span>
+        <div class="diff-buttons">
+            <button class="btn-diff active" onclick="setDifficulty(25, this, 'Fácil')">Fácil (25)</button>
+            <button class="btn-diff" onclick="setDifficulty(35, this, 'Medio')">Medio (35)</button>
+            <button class="btn-diff" onclick="setDifficulty(45, this, 'Difícil')">Difícil (45)</button>
+        </div>
+    </div>
+
+    <div class="metrics-wrapper">
+        <div class="metric metric-main">
+            <div class="label">Tiempo</div>
+            <div class="value" id="time">00:00</div>
+        </div>
+        <div class="metrics-row">
+            <div class="metric">
+                <div class="label">Cadencia</div>
+                <div class="value" id="spm">0</div>
+                <div class="unit">SPM</div>
+            </div>
+            <div class="metric">
+                <div class="label">Paladas</div>
+                <div class="value" id="cnt">0</div>
+                <div class="unit">repeticiones</div>
+            </div>
+            <div class="metric">
+                <div class="label">Calorías</div>
+                <div class="value" id="kcal">0</div>
+                <div class="unit">kcal</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="status">Desconectado</div>
+    <button onclick="connectBT()">CONECTAR REMADORA</button>
+    <button class="btn-save" onclick="saveSession()">GUARDAR ENTRENAMIENTO</button>
+
+    <div class="history-section">
+        <div class="history-title">Últimos 10 Registros</div>
+        <div id="historyList" class="history-list">
+        </div>
+    </div>
+</div>
+
+<script>
+    let startTime = null;
+    let ghostInterval = null;
+    let ghostStrokes = 0;
+    let targetSPM = 25;
+    let currentDifficultyName = "Fácil";
+    let isRaceStarted = false;
+    const maxTrackStrokes = 100;
+
+    document.addEventListener("DOMContentLoaded", renderHistory);
+
+    function setDifficulty(spm, btn, name) {
+        targetSPM = spm;
+        currentDifficultyName = name;
+        document.querySelectorAll('.btn-diff').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('ghostBadge').innerText = "Bot";
+    }
+
+    function startRaceCountdown() {
+        if (isRaceStarted) return;
+        isRaceStarted = true;
+
+        const overlay = document.getElementById('countdownOverlay');
+        const text = document.getElementById('countdownText');
+        overlay.style.display = 'flex';
+        
+        let count = 5;
+        text.innerText = count;
+
+        let timer = setInterval(() => {
+            count--;
+            if (count > 0) {
+                text.innerText = count;
+            } else if (count === 0) {
+                text.innerText = "¡A REMAR!";
+            } else {
+                clearInterval(timer);
+                overlay.style.display = 'none';
+                startTime = Date.now();
+                startGhost();
+            }
+        }, 1000);
+    }
+
+    async function connectBT() {
+        const statusEl = document.getElementById('status');
+        try {
+            statusEl.innerText = "Buscando máquina...";
+            const device = await navigator.bluetooth.requestDevice({
+                filters: [{ namePrefix: 'YOSUDA' }],
+                optionalServices: ['fitness_machine']
+            });
+
+            statusEl.innerText = "Conectando...";
+            const server = await device.gatt.connect();
+            const service = await server.getPrimaryService('fitness_machine');
+            
+            const char = await service.getCharacteristic('00002ad1-0000-1000-8000-00805f9b34fb');
+            await char.startNotifications();
+
+            statusEl.innerText = "¡CONECTADO!";
+            statusEl.style.color = "#22c55e";
+
+            startRaceCountdown();
+
+            char.addEventListener('characteristicvaluechanged', (e) => {
+                let data = new DataView(e.target.value.buffer);
+                let bytes = new Uint8Array(e.target.value.buffer);
+
+                if (bytes.length >= 12 && bytes[0] === 0x7f) {
+                    let spmVal = Math.round((bytes[12] || 0) / 2);
+                    document.getElementById('spm').innerText = spmVal;
+                } 
+                else if (bytes[0] === 0x00 && bytes.length >= 8) {
+                    let countVal = data.getUint16(3, true);
+                    let caloriesVal = data.getUint16(5, true);
+
+                    document.getElementById('cnt').innerText = countVal;
+                    document.getElementById('kcal').innerText = caloriesVal;
+
+                    let userPos = Math.min((countVal % maxTrackStrokes) / maxTrackStrokes * 68, 68);
+                    document.getElementById('userBoat').style.left = `calc(${userPos}% - 35px)`;
+
+                    if (startTime) {
+                        let elapsedSecs = Math.floor((Date.now() - startTime) / 1000);
+                        let tMins = Math.floor(elapsedSecs / 60).toString().padStart(2, '0');
+                        let tSecs = (elapsedSecs % 60).toString().padStart(2, '0');
+                        document.getElementById('time').innerText = `${tMins}:${tSecs}`;
+                    }
+                }
+            });
+
+        } catch (error) {
+            statusEl.innerText = "Error: " + error.message;
+            statusEl.style.color = "#ef4444";
+        }
+    }
+
+    function startGhost() {
+        if (ghostInterval) clearInterval(ghostInterval);
+        const intervalMs = (60 / targetSPM) * 1000;
+        ghostInterval = setInterval(() => {
+            ghostStrokes++;
+            let ghostPos = Math.min((ghostStrokes % maxTrackStrokes) / maxTrackStrokes * 68, 68);
+            document.getElementById('ghostBoat').style.left = `calc(${ghostPos}% - 35px)`;
+        }, intervalMs);
+    }
+
+    function saveSession() {
+        const time = document.getElementById('time').innerText;
+        const strokes = document.getElementById('cnt').innerText;
+        const kcal = document.getElementById('kcal').innerText;
+        const spm = document.getElementById('spm').innerText;
+
+        if (strokes === "0" && time === "00:00") {
+            alert("No hay datos de entrenamiento para guardar.");
+            return;
+        }
+
+        let userChoice = prompt("¿Quién realizó el entrenamiento?\n\nEscribe el nombre:\n- Juan\n- Mary\n- Santi", "Santi");
+        if (userChoice === null || userChoice.trim() === "") return;
+        const userName = userChoice.trim();
+
+        let resistance = prompt("¿Qué nivel de fuerza usaste en la remadora? (6 a 16):", "6");
+        if (resistance === null) return;
+
+        resistance = parseInt(resistance);
+        if (isNaN(resistance) || resistance < 6 || resistance > 16) {
+            alert("Por favor ingresa un nivel válido entre 6 y 16.");
+            return;
+        }
+
+        const newRecord = {
+            user: userName,
+            date: new Date().toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
+            time: time,
+            strokes: strokes,
+            kcal: kcal,
+            spm: spm,
+            resistance: resistance,
+            difficultyName: currentDifficultyName,
+            targetSPM: targetSPM
+        };
+
+        let history = JSON.parse(localStorage.getItem('yosuda_history')) || [];
+        history.unshift(newRecord);
+
+        if (history.length > 10) {
+            history = history.slice(0, 10);
+        }
+
+        localStorage.setItem('yosuda_history', JSON.stringify(history));
+        renderHistory();
+        alert(`¡Entrenamiento guardado con éxito!`);
+    }
+
+    function renderHistory() {
+        const historyList = document.getElementById('historyList');
+        const history = JSON.parse(localStorage.getItem('yosuda_history')) || [];
+        
+        historyList.innerHTML = '';
+
+        if (history.length === 0) {
+            historyList.innerHTML = '<div style="color:#64748b; font-size:0.8rem; padding: 10px 0;">Sin registros aún.</div>';
+            return;
+        }
+
+        history.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'history-card';
+            
+            const diffText = item.difficultyName ? `${item.difficultyName} (${item.targetSPM} SPM)` : `${item.targetSPM || 25} SPM`;
+            const userName = item.user || 'Santi';
+
+            card.innerHTML = `
+                <div class="history-top">
+                    <div class="history-stats-col">
+                        <div class="stat-line">
+                            <span class="stat-label-white">Remadas:</span>
+                            <span class="stat-val-white">${item.strokes}</span>
+                        </div>
+                        <div class="stat-line">
+                            <span class="stat-label-orange">Kcalorias:</span>
+                            <span class="stat-val-orange">${item.kcal}</span>
+                        </div>
+                        <div class="stat-line">
+                            <span class="stat-label-red">SPM:</span>
+                            <span class="stat-val-red">${item.spm}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="history-user-center">${userName}</div>
+
+                    <div class="history-right-col">
+                        <div class="history-date">${item.date}</div>
+                        <div class="time-box">
+                            <span class="time-label-red">TIEMPO:</span>
+                            <span class="time-val-red">${item.time}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="history-bottom">
+                    Fuerza: ${item.resistance || '6'} &nbsp;/&nbsp; Dificultad: ${diffText}
+                </div>
+            `;
+            historyList.appendChild(card);
+        });
+    }
+</script>
+
+</body>
+</html>
