@@ -164,6 +164,29 @@
             color: #34d399; 
             margin-top: 0px; 
         }
+
+        /* Panel de depuración (temporal) */
+        .debug-section { margin-top: 16px; border-top: 1px dashed #f59e0b; padding-top: 12px; text-align: left; }
+        .debug-title { font-size: 0.8rem; color: #f59e0b; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
+        .debug-log { 
+            width: 100%; 
+            box-sizing: border-box; 
+            height: 160px; 
+            background: #0f172a; 
+            color: #4ade80; 
+            font-family: "Courier New", monospace; 
+            font-size: 0.72rem; 
+            border: 1px solid #334155; 
+            border-radius: 8px; 
+            padding: 8px; 
+            resize: vertical; 
+            white-space: pre; 
+        }
+        .debug-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-debug-copy { background: #f59e0b; margin-top: 0; }
+        .btn-debug-copy:active { background: #d97706; }
+        .btn-debug-clear { background: #334155; margin-top: 0; }
+        .btn-debug-clear:active { background: #1e293b; }
     </style>
 </head>
 <body>
@@ -226,6 +249,15 @@
         <div id="historyList" class="history-list">
         </div>
     </div>
+
+    <div class="debug-section">
+        <div class="debug-title">⚠️ Modo depuración (temporal)</div>
+        <textarea id="debugLog" class="debug-log" readonly placeholder="Aquí aparecerán los bytes crudos que envía la remadora al conectarte..."></textarea>
+        <div class="debug-actions">
+            <button class="btn-debug-copy" onclick="copyDebugLog()">Copiar datos</button>
+            <button class="btn-debug-clear" onclick="clearDebugLog()">Limpiar</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -259,6 +291,41 @@
         renderHistory();
         requestWakeLock();
     });
+
+    function logDebugBytes(bytes) {
+        const logEl = document.getElementById('debugLog');
+        if (!logEl) return;
+
+        const now = new Date();
+        const time = now.toTimeString().split(' ')[0] + '.' + now.getMilliseconds().toString().padStart(3, '0');
+
+        const hexBytes = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
+        const decBytes = Array.from(bytes).join(',');
+
+        const line = `[${time}] len=${bytes.length} hex=[${hexBytes}] dec=[${decBytes}]`;
+
+        logEl.value += line + '\n';
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function copyDebugLog() {
+        const logEl = document.getElementById('debugLog');
+        if (!logEl || !logEl.value) {
+            alert('Aún no hay datos capturados. Conecta la remadora y rema unos segundos primero.');
+            return;
+        }
+        navigator.clipboard.writeText(logEl.value).then(() => {
+            alert('¡Datos copiados! Pégalos en el chat.');
+        }).catch(() => {
+            logEl.select();
+            alert('Selecciona el texto manualmente y cópialo (Ctrl+C / mantener presionado).');
+        });
+    }
+
+    function clearDebugLog() {
+        const logEl = document.getElementById('debugLog');
+        if (logEl) logEl.value = '';
+    }
 
     function setDifficulty(spm, btn, name) {
         targetSPM = spm;
@@ -318,6 +385,8 @@
             char.addEventListener('characteristicvaluechanged', (e) => {
                 let data = new DataView(e.target.value.buffer);
                 let bytes = new Uint8Array(e.target.value.buffer);
+
+                logDebugBytes(bytes);
 
                 if (bytes.length >= 12 && bytes[0] === 0x7f) {
                     let spmVal = Math.round((bytes[12] || 0) / 2);
