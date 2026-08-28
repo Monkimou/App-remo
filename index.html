@@ -229,9 +229,9 @@
     <div class="diff-container">
         <span class="diff-label">Dificultad Fantasma</span>
         <div class="diff-buttons">
-            <button class="btn-diff active" onclick="setDifficulty(3.5, this, 'Fácil')">Fácil (3-4)</button>
-            <button class="btn-diff" onclick="setDifficulty(5.5, this, 'Medio')">Medio (5-6)</button>
-            <button class="btn-diff" onclick="setDifficulty(7.5, this, 'Difícil')">Difícil (7-8)</button>
+            <button class="btn-diff active" onclick="setDifficulty(5.5, this, 'Fácil')">Fácil (5-6)</button>
+            <button class="btn-diff" onclick="setDifficulty(7,5, this, 'Medio')">Medio (7-8)</button>
+            <button class="btn-diff" onclick="setDifficulty(9.5, this, 'Difícil')">Difícil (9-10)</button>
         </div>
     </div>
 
@@ -297,7 +297,7 @@
     let targetKmh = 3.5;
     let currentDifficultyName = "Fácil";
     let isRaceStarted = false;
-    const TRACK_LENGTH_M = 300; // metros por "vuelta" visual en el track
+    const TRACK_LENGTH_M = 250; // metros por "vuelta" visual en el track
 
     let userDistanceM = 0;
     let ghostDistanceM = 0;
