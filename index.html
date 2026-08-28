@@ -165,28 +165,47 @@
             margin-top: 0px; 
         }
 
-        /* Panel de depuración (temporal) */
-        .debug-section { margin-top: 16px; border-top: 1px dashed #f59e0b; padding-top: 12px; text-align: left; }
-        .debug-title { font-size: 0.8rem; color: #f59e0b; font-weight: bold; text-transform: uppercase; margin-bottom: 6px; }
-        .debug-log { 
-            width: 100%; 
-            box-sizing: border-box; 
-            height: 160px; 
-            background: #0f172a; 
-            color: #4ade80; 
-            font-family: "Courier New", monospace; 
-            font-size: 0.72rem; 
-            border: 1px solid #334155; 
-            border-radius: 8px; 
-            padding: 8px; 
-            resize: vertical; 
-            white-space: pre; 
+        /* Modal de guardado */
+        .save-modal-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 50; padding: 20px; box-sizing: border-box;
         }
-        .debug-actions { display: flex; gap: 8px; margin-top: 8px; }
-        .btn-debug-copy { background: #f59e0b; margin-top: 0; }
-        .btn-debug-copy:active { background: #d97706; }
-        .btn-debug-clear { background: #334155; margin-top: 0; }
-        .btn-debug-clear:active { background: #1e293b; }
+        .save-modal-box {
+            background: #1e293b; border-radius: 16px; padding: 20px;
+            max-width: 400px; width: 100%; text-align: left;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+        }
+        .save-modal-title { font-size: 1.1rem; font-weight: 800; color: white; margin-bottom: 14px; text-align: center; }
+        .name-input {
+            width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 1rem;
+            border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white;
+            margin-bottom: 16px;
+        }
+        .force-label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
+        .force-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 18px; }
+        .btn-force {
+            padding: 10px 0; font-size: 0.9rem; font-weight: bold;
+            background: #0f172a; color: #94a3b8; border: 1px solid #334155;
+            border-radius: 8px; cursor: pointer; margin: 0;
+        }
+        .btn-force.active { background: #0284c7; color: white; border-color: #38bdf8; }
+        .save-modal-actions { display: flex; gap: 10px; }
+        .save-modal-actions button { margin-top: 0; }
+        .btn-cancel { background: #334155; }
+        .btn-cancel:active { background: #1e293b; }
+
+        /* Leaderboard */
+        .leaderboard-card {
+            background: #0f172a; border: 1px solid #334155; border-radius: 10px;
+            padding: 10px 14px; margin-bottom: 8px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .lb-rank { font-size: 1.1rem; font-weight: 900; color: #facc15; width: 28px; }
+        .lb-name { font-size: 1rem; font-weight: 800; color: #38bdf8; flex: 1; }
+        .lb-stats { text-align: right; font-size: 0.8rem; color: #94a3b8; }
+        .lb-kmh { color: #34d399; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -210,9 +229,9 @@
     <div class="diff-container">
         <span class="diff-label">Dificultad Fantasma</span>
         <div class="diff-buttons">
-            <button class="btn-diff active" onclick="setDifficulty(25, this, 'Fácil')">Fácil (25)</button>
-            <button class="btn-diff" onclick="setDifficulty(35, this, 'Medio')">Medio (35)</button>
-            <button class="btn-diff" onclick="setDifficulty(45, this, 'Difícil')">Difícil (45)</button>
+            <button class="btn-diff active" onclick="setDifficulty(3.5, this, 'Fácil')">Fácil (3-4)</button>
+            <button class="btn-diff" onclick="setDifficulty(5.5, this, 'Medio')">Medio (5-6)</button>
+            <button class="btn-diff" onclick="setDifficulty(7.5, this, 'Difícil')">Difícil (7-8)</button>
         </div>
     </div>
 
@@ -223,9 +242,9 @@
         </div>
         <div class="metrics-row">
             <div class="metric">
-                <div class="label">Cadencia</div>
-                <div class="value" id="spm">0</div>
-                <div class="unit">SPM</div>
+                <div class="label">Velocidad</div>
+                <div class="value" id="kmh">0.0</div>
+                <div class="unit">km/h</div>
             </div>
             <div class="metric">
                 <div class="label">Paladas</div>
@@ -245,29 +264,45 @@
     <button class="btn-save" onclick="saveSession()">GUARDAR ENTRENAMIENTO</button>
 
     <div class="history-section">
-        <div class="history-title">Últimos 10 Registros</div>
-        <div id="historyList" class="history-list">
+        <div class="history-title">🏆 Mejor Marca por Persona</div>
+        <div id="leaderboardList" class="history-list">
         </div>
     </div>
 
-    <div class="debug-section">
-        <div class="debug-title">⚠️ Modo depuración (temporal)</div>
-        <textarea id="debugLog" class="debug-log" readonly placeholder="Aquí aparecerán los bytes crudos que envía la remadora al conectarte..."></textarea>
-        <div class="debug-actions">
-            <button class="btn-debug-copy" onclick="copyDebugLog()">Copiar datos</button>
-            <button class="btn-debug-clear" onclick="clearDebugLog()">Limpiar</button>
+    <div class="history-section">
+        <div class="history-title">Últimos Registros</div>
+        <div id="historyList" class="history-list">
+        </div>
+    </div>
+</div>
+
+<div id="saveModal" class="save-modal-overlay" style="display: none;">
+    <div class="save-modal-box">
+        <div class="save-modal-title">Guardar entrenamiento</div>
+        <input type="text" id="nameInput" class="name-input" placeholder="Nombre de quién remó">
+        <div class="force-label">Nivel de fuerza</div>
+        <div class="force-grid" id="forceGrid"></div>
+        <div class="save-modal-actions">
+            <button class="btn-cancel" onclick="closeSaveModal()">Cancelar</button>
+            <button class="btn-save" onclick="confirmSaveSession()">Guardar</button>
         </div>
     </div>
 </div>
 
 <script>
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxs5RkbQS_59SlzVXSHOwm1mITH34RXxtmG73FvntTDv3dFhrbCdGX8joDmLE98HpH_/exec';
+
     let startTime = null;
     let ghostInterval = null;
-    let ghostStrokes = 0;
-    let targetSPM = 25;
+    let targetKmh = 3.5;
     let currentDifficultyName = "Fácil";
     let isRaceStarted = false;
-    const maxTrackStrokes = 100;
+    const TRACK_LENGTH_M = 300; // metros por "vuelta" visual en el track
+
+    let userDistanceM = 0;
+    let ghostDistanceM = 0;
+    let lastPaceTime = null;
+    let selectedFuerza = null;
 
     let wakeLock = null;
 
@@ -288,47 +323,13 @@
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-        renderHistory();
+        renderForceButtons();
+        fetchRecords();
         requestWakeLock();
     });
 
-    function logDebugBytes(bytes) {
-        const logEl = document.getElementById('debugLog');
-        if (!logEl) return;
-
-        const now = new Date();
-        const time = now.toTimeString().split(' ')[0] + '.' + now.getMilliseconds().toString().padStart(3, '0');
-
-        const hexBytes = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        const decBytes = Array.from(bytes).join(',');
-
-        const line = `[${time}] len=${bytes.length} hex=[${hexBytes}] dec=[${decBytes}]`;
-
-        logEl.value += line + '\n';
-        logEl.scrollTop = logEl.scrollHeight;
-    }
-
-    function copyDebugLog() {
-        const logEl = document.getElementById('debugLog');
-        if (!logEl || !logEl.value) {
-            alert('Aún no hay datos capturados. Conecta la remadora y rema unos segundos primero.');
-            return;
-        }
-        navigator.clipboard.writeText(logEl.value).then(() => {
-            alert('¡Datos copiados! Pégalos en el chat.');
-        }).catch(() => {
-            logEl.select();
-            alert('Selecciona el texto manualmente y cópialo (Ctrl+C / mantener presionado).');
-        });
-    }
-
-    function clearDebugLog() {
-        const logEl = document.getElementById('debugLog');
-        if (logEl) logEl.value = '';
-    }
-
-    function setDifficulty(spm, btn, name) {
-        targetSPM = spm;
+    function setDifficulty(kmh, btn, name) {
+        targetKmh = kmh;
         currentDifficultyName = name;
         document.querySelectorAll('.btn-diff').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -386,21 +387,33 @@
                 let data = new DataView(e.target.value.buffer);
                 let bytes = new Uint8Array(e.target.value.buffer);
 
-                logDebugBytes(bytes);
+                if (bytes.length >= 8 && bytes[0] === 0x7f) {
+                    // Bytes 6-7: ritmo instantáneo (segundos por 500m). 0xFFFF = sin dato aún.
+                    let paceRaw = bytes[6] + (bytes[7] << 8);
+                    let kmh = 0;
+                    if (paceRaw > 0 && paceRaw < 0xFFFF) {
+                        kmh = 1800 / paceRaw;
+                    }
+                    document.getElementById('kmh').innerText = kmh.toFixed(1);
 
-                if (bytes.length >= 12 && bytes[0] === 0x7f) {
-                    let spmVal = Math.round((bytes[12] || 0) / 2);
-                    document.getElementById('spm').innerText = spmVal;
-                } 
+                    const now = Date.now();
+                    if (lastPaceTime !== null) {
+                        const dtSec = (now - lastPaceTime) / 1000;
+                        if (dtSec > 0 && dtSec < 5) { // ignora saltos raros (reconexión, etc.)
+                            userDistanceM += (kmh * 1000 / 3600) * dtSec;
+                        }
+                    }
+                    lastPaceTime = now;
+
+                    let userPos = Math.min((userDistanceM % TRACK_LENGTH_M) / TRACK_LENGTH_M * 68, 68);
+                    document.getElementById('userBoat').style.left = `calc(${userPos}% - 35px)`;
+                }
                 else if (bytes[0] === 0x00 && bytes.length >= 8) {
                     let countVal = data.getUint16(3, true);
                     let caloriesVal = data.getUint16(5, true);
 
                     document.getElementById('cnt').innerText = countVal;
                     document.getElementById('kcal').innerText = caloriesVal;
-
-                    let userPos = Math.min((countVal % maxTrackStrokes) / maxTrackStrokes * 68, 68);
-                    document.getElementById('userBoat').style.left = `calc(${userPos}% - 35px)`;
 
                     if (startTime) {
                         let elapsedSecs = Math.floor((Date.now() - startTime) / 1000);
@@ -419,112 +432,197 @@
 
     function startGhost() {
         if (ghostInterval) clearInterval(ghostInterval);
-        const intervalMs = (60 / targetSPM) * 1000;
+        const tickMs = 200;
+        let lastTick = Date.now();
         ghostInterval = setInterval(() => {
-            ghostStrokes++;
-            let ghostPos = Math.min((ghostStrokes % maxTrackStrokes) / maxTrackStrokes * 68, 68);
+            const now = Date.now();
+            const dtSec = (now - lastTick) / 1000;
+            lastTick = now;
+            ghostDistanceM += (targetKmh * 1000 / 3600) * dtSec;
+            let ghostPos = Math.min((ghostDistanceM % TRACK_LENGTH_M) / TRACK_LENGTH_M * 68, 68);
             document.getElementById('ghostBoat').style.left = `calc(${ghostPos}% - 35px)`;
-        }, intervalMs);
+        }, tickMs);
+    }
+
+    function timeToSeconds(timeStr) {
+        const [m, s] = timeStr.split(':').map(Number);
+        return (m || 0) * 60 + (s || 0);
+    }
+
+    function renderForceButtons() {
+        const grid = document.getElementById('forceGrid');
+        grid.innerHTML = '';
+        for (let n = 6; n <= 16; n++) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-force';
+            btn.innerText = n;
+            btn.onclick = () => {
+                selectedFuerza = n;
+                document.querySelectorAll('.btn-force').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            };
+            grid.appendChild(btn);
+        }
     }
 
     function saveSession() {
         const time = document.getElementById('time').innerText;
         const strokes = document.getElementById('cnt').innerText;
-        const kcal = document.getElementById('kcal').innerText;
-        const spm = document.getElementById('spm').innerText;
 
         if (strokes === "0" && time === "00:00") {
             alert("No hay datos de entrenamiento para guardar.");
             return;
         }
 
-        let userChoice = prompt("¿Quién realizó el entrenamiento?\n\nEscribe el nombre:\n- Juan\n- Mary\n- Santi", "Santi");
-        if (userChoice === null || userChoice.trim() === "") return;
-        const userName = userChoice.trim();
+        document.getElementById('nameInput').value = '';
+        selectedFuerza = null;
+        renderForceButtons();
+        document.getElementById('saveModal').style.display = 'flex';
+    }
 
-        let resistance = prompt("¿Qué nivel de fuerza usaste en la remadora? (6 a 16):", "6");
-        if (resistance === null) return;
+    function closeSaveModal() {
+        document.getElementById('saveModal').style.display = 'none';
+    }
 
-        resistance = parseInt(resistance);
-        if (isNaN(resistance) || resistance < 6 || resistance > 16) {
-            alert("Por favor ingresa un nivel válido entre 6 y 16.");
+    async function confirmSaveSession() {
+        const nameInput = document.getElementById('nameInput');
+        const userName = nameInput.value.trim();
+
+        if (userName === '') {
+            alert('Escribe el nombre de quién remó.');
+            return;
+        }
+        if (!selectedFuerza) {
+            alert('Selecciona el nivel de fuerza usado.');
             return;
         }
 
-        const newRecord = {
-            user: userName,
-            date: new Date().toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' }),
-            time: time,
-            strokes: strokes,
-            kcal: kcal,
-            spm: spm,
-            resistance: resistance,
-            difficultyName: currentDifficultyName,
-            targetSPM: targetSPM
+        const time = document.getElementById('time').innerText;
+        const strokes = parseInt(document.getElementById('cnt').innerText) || 0;
+        const kcal = parseInt(document.getElementById('kcal').innerText) || 0;
+        const tiempoSeg = timeToSeconds(time);
+        const distanciaEstKm = userDistanceM / 1000;
+        const kmhProm = tiempoSeg > 0 ? (distanciaEstKm / (tiempoSeg / 3600)) : 0;
+
+        const record = {
+            nombre: userName,
+            fecha: new Date().toISOString(),
+            tiempoSeg: tiempoSeg,
+            paladas: strokes,
+            calorias: kcal,
+            kmhProm: Number(kmhProm.toFixed(2)),
+            distanciaEstKm: Number(distanciaEstKm.toFixed(3)),
+            fuerza: selectedFuerza,
+            dificultad: currentDifficultyName
         };
 
-        let history = JSON.parse(localStorage.getItem('yosuda_history')) || [];
-        history.unshift(newRecord);
-
-        if (history.length > 10) {
-            history = history.slice(0, 10);
+        try {
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(record)
+            });
+            closeSaveModal();
+            alert('¡Entrenamiento guardado con éxito!');
+            fetchRecords();
+        } catch (err) {
+            alert('No se pudo guardar en la nube. Revisa tu conexión e intenta de nuevo.');
         }
-
-        localStorage.setItem('yosuda_history', JSON.stringify(history));
-        renderHistory();
-        alert(`¡Entrenamiento guardado con éxito!`);
     }
 
-    function renderHistory() {
+    async function fetchRecords() {
+        try {
+            const res = await fetch(APPS_SCRIPT_URL);
+            const data = await res.json();
+            renderHistory(data.recientes || []);
+            renderLeaderboard(data.leaderboard || []);
+        } catch (err) {
+            document.getElementById('historyList').innerHTML = '<div style="color:#64748b; font-size:0.8rem; padding: 10px 0;">No se pudieron cargar los registros.</div>';
+            document.getElementById('leaderboardList').innerHTML = '';
+        }
+    }
+
+    function formatFecha(fechaStr) {
+        try {
+            return new Date(fechaStr).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+        } catch (e) {
+            return fechaStr;
+        }
+    }
+
+    function secondsToTime(totalSecs) {
+        const m = Math.floor(totalSecs / 60).toString().padStart(2, '0');
+        const s = Math.floor(totalSecs % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    function renderHistory(registros) {
         const historyList = document.getElementById('historyList');
-        const history = JSON.parse(localStorage.getItem('yosuda_history')) || [];
-        
         historyList.innerHTML = '';
 
-        if (history.length === 0) {
+        if (registros.length === 0) {
             historyList.innerHTML = '<div style="color:#64748b; font-size:0.8rem; padding: 10px 0;">Sin registros aún.</div>';
             return;
         }
 
-        history.forEach(item => {
+        registros.forEach(item => {
             const card = document.createElement('div');
             card.className = 'history-card';
-            
-            const diffText = item.difficultyName ? `${item.difficultyName} (${item.targetSPM} SPM)` : `${item.targetSPM || 25} SPM`;
-            const userName = item.user || 'Santi';
 
             card.innerHTML = `
                 <div class="history-top">
                     <div class="history-stats-col">
                         <div class="stat-line">
                             <span class="stat-label-white">Remadas:</span>
-                            <span class="stat-val-white">${item.strokes}</span>
+                            <span class="stat-val-white">${item.paladas}</span>
                         </div>
                         <div class="stat-line">
                             <span class="stat-label-orange">Kcalorias:</span>
-                            <span class="stat-val-orange">${item.kcal}</span>
+                            <span class="stat-val-orange">${item.calorias}</span>
                         </div>
                         <div class="stat-line">
-                            <span class="stat-label-red">SPM:</span>
-                            <span class="stat-val-red">${item.spm}</span>
+                            <span class="stat-label-red">Km/h prom:</span>
+                            <span class="stat-val-red">${item.kmhProm}</span>
                         </div>
                     </div>
                     
-                    <div class="history-user-center">${userName}</div>
+                    <div class="history-user-center">${item.nombre}</div>
 
                     <div class="history-right-col">
-                        <div class="history-date">${item.date}</div>
+                        <div class="history-date">${formatFecha(item.fecha)}</div>
                         <div class="time-box">
                             <span class="time-label-red">TIEMPO:</span>
-                            <span class="time-val-red">${item.time}</span>
+                            <span class="time-val-red">${secondsToTime(item.tiempoSeg)}</span>
                         </div>
                     </div>
                 </div>
                 <div class="history-bottom">
-                    Fuerza: ${item.resistance || '6'} &nbsp;/&nbsp; Dificultad: ${diffText}
+                    Fuerza: ${item.fuerza} &nbsp;/&nbsp; Dificultad: ${item.dificultad}
                 </div>
             `;
             historyList.appendChild(card);
+        });
+    }
+
+    function renderLeaderboard(leaderboard) {
+        const list = document.getElementById('leaderboardList');
+        list.innerHTML = '';
+
+        if (leaderboard.length === 0) {
+            list.innerHTML = '<div style="color:#64748b; font-size:0.8rem; padding: 10px 0;">Sin registros aún.</div>';
+            return;
+        }
+
+        leaderboard.forEach((item, i) => {
+            const row = document.createElement('div');
+            row.className = 'leaderboard-card';
+            row.innerHTML = `
+                <span class="lb-rank">#${i + 1}</span>
+                <span class="lb-name">${item.nombre}</span>
+                <span class="lb-stats"><span class="lb-kmh">${item.kmhProm} km/h</span><br>${secondsToTime(item.tiempoSeg)}</span>
+            `;
+            list.appendChild(row);
         });
     }
 </script>
